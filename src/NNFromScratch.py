@@ -13,7 +13,7 @@ class NNClassifierFromScratch(BaseEstimator, ClassifierMixin):
         self.layer_sizes = None
         self.n_layers = None
         self.scaling_factor = 255
-        self.display_progress = True
+        self.display_progress = False
         
         # Hyper-parameters
         self.activation = activation
@@ -159,7 +159,7 @@ class NNClassifierFromScratch(BaseEstimator, ClassifierMixin):
         
         # call gradient descent
         if(self.batch_size is None):
-            self.gradient_descent(X_np, y_onehot, self.n_epochs, self.display_progress)
+            self.full_gradient_descent(X_np, y_onehot, self.n_epochs, self.display_progress)
         else:
             self.stochastic_gradient_descent(X_np, y_onehot, self.n_epochs, self.display_progress)
         
