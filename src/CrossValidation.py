@@ -95,8 +95,8 @@ class CrossValidation:
             print(f"Fit time: {time_fit}")
 
             # Neural Network Stats
-            epochs, final_loss, loss_curve, validation_scores, final_validation_score = self.get_NN_stats(self.pipeline.named_steps["model"])
-            loss_curves[str(params)], validation_score_curves[str(params)] = loss_curve, validation_scores
+            epochs, loss_curve, final_loss, validation_curve, final_validation_score = self.get_NN_stats(self.pipeline.named_steps["model"])
+            loss_curves[str(params)], validation_score_curves[str(params)] = loss_curve, validation_curve
 
             start_pred = time.time()
             y_pred = self.pipeline.predict(X_test)
@@ -124,20 +124,22 @@ class CrossValidation:
     
 
     def get_NN_stats(self, model):
-        if(hasattr(model, "loss_curve_")):
-            loss_curve = model.loss_curve_
+        loss_curve = getattr(model, "loss_curve_", None)
+
+        if loss_curve is not None and len(loss_curve) > 0:
             final_loss = loss_curve[-1]
-            epochs = model.n_iter_
+            epochs = len(loss_curve)
         else:
             loss_curve = np.nan
             final_loss = np.nan
             epochs = np.nan
-        
-        if(hasattr(model, "validation_scores_")):
-            validation_score_curve = model.validation_scores_
-            final_validation_score = validation_score_curve[-1]
+
+        validation_curve = getattr(model, "validation_scores_", None)
+
+        if validation_curve is not None and len(validation_curve) > 0:
+            final_validation_score = validation_curve[-1]
         else:
-            validation_score_curve = np.nan
+            validation_curve = np.nan
             final_validation_score = np.nan
 
-        return epochs, final_loss, loss_curve, validation_score_curve, final_validation_score
+        return epochs, loss_curve, final_loss, validation_curve, final_validation_score

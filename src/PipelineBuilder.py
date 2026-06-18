@@ -14,7 +14,7 @@ class PipelineBuilder:
     def build(self, model_name, params=None):
         model = self.model_colection.get(model_name=model_name, params=params)
 
-        if(model_name in ["KNN", "XGBoost"]):
+        if(model_name in ["KNN", "XGBoost", "My NN"]):
             preprocessor = self.get_preprocessor_simple()
         
         elif(model_name in ["MLP"]):
