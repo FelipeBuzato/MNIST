@@ -1,0 +1,174 @@
+from sklearn.base import BaseEstimator, ClassifierMixin
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import time
+from TorchModelCollection import TorchModelCollection
+
+class TorchClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self, model_name='NN', hidden_layer_sizes=(128,), learning_rate=1e-3, n_epochs=50, batch_size=256, sgd=True,
+                       criterion='cross entropy', optimizer = 'adam', random_state=42):
+        self.hidden_layer_sizes = hidden_layer_sizes
+        self.learning_rate = learning_rate
+        self.n_epochs = n_epochs
+        self.batch_size = batch_size
+        self.sgd = sgd
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.model_name = model_name
+        self.random_state = random_state
+
+        self.loss_curve_ = None
+        self.validation_scores_ = None
+        self.model_ = None
+
+        self.display = False
+
+
+    def _to_tensor(self, X, dtype):
+        if torch.is_tensor(X):
+            return X
+
+        if hasattr(X, "to_numpy"):
+            X = X.to_numpy()
+
+        return torch.as_tensor(X, dtype=dtype)
+
+
+    def get_torch_model(self, model_name, hidden_layer_sizes):
+        torch_model_collection = TorchModelCollection()
+        return torch_model_collection.get(model_name=model_name, hidden_layer_sizes=hidden_layer_sizes)
+    
+
+    def get_criterion(self):
+        if(self.criterion == "cross entropy"):
+            return nn.CrossEntropyLoss()
+        
+        raise ValueError(f"Criterion {self.criterion} not found.")
+    
+
+    def get_optimizer(self):
+        if(self.optimizer == "adam"):
+            return optim.Adam(self.model_.parameters(), lr=self.learning_rate)
+        
+        raise ValueError(f"Optimizer {self.optimizer} not found.")
+    
+
+    def stochastic_gradient_descent(self, X, y, optimizer, criterion):
+        loss_curve = []
+        
+        for epoch in range(self.n_epochs):
+            # shuffle every epoch
+            indices = torch.randperm(X.shape[0])
+            X_shuffled = X[indices]
+            y_shuffled = y[indices]
+        
+            epoch_loss = 0
+        
+            # SGD:
+            for X_batch, y_batch in zip(X_shuffled.split(self.batch_size), y_shuffled.split(self.batch_size)):  
+                # reset gradients so they won't accumulate from previous iteration
+                optimizer.zero_grad(set_to_none=True)
+                
+                # forward propagation and loss computation
+                output = self.model_(X_batch)
+                loss = criterion(output, y_batch)
+        
+                # back propagation
+                loss.backward()
+                epoch_loss += loss.item() * X_batch.shape[0]
+        
+                # optimization step
+                optimizer.step()
+        
+            epoch_loss /= X.shape[0]
+            loss_curve.append(epoch_loss)
+            
+            if(epoch%20 == 0 and self.display):
+                print(f"Loss after Epoch {epoch+1}: {epoch_loss:.4f}.")
+        
+        return loss_curve
+
+
+    def full_gradient_descent(self, X, y, optimizer, criterion):
+        loss_curve = []
+        
+        for epoch in range(self.n_epochs):        
+            optimizer.zero_grad(set_to_none=True)
+            
+            # forward propagation and loss computation
+            output = self.model_(X)
+            loss = criterion(output, y)
+    
+            # back propagation
+            loss.backward()
+            epoch_loss = loss.item()
+    
+            # optimization step
+            optimizer.step()
+        
+            loss_curve.append(epoch_loss)
+            
+            if(epoch%20 == 0 and self.display):
+                print(f"Loss after Epoch {epoch+1}: {epoch_loss:.4f}.")
+        
+        return loss_curve
+    
+    
+    def fit(self, X, y):
+        start_training_time = time.time()
+
+        # convert X and y to tensor
+        X = self._to_tensor(X, dtype=torch.float32)
+        y = self._to_tensor(y, dtype=torch.long)
+
+        self.model_ = self.get_torch_model(self.model_name, self.hidden_layer_sizes)
+        self.model_.train()
+        if(self.display): print(f"Training Activated ? {self.model_.training}")
+        
+        # define loss function and optimizer
+        criterion = self.get_criterion()
+        optimizer = self.get_optimizer()
+
+        torch.manual_seed(self.random_state)
+
+        if(self.sgd):
+            loss_curve = self.stochastic_gradient_descent(X, y, optimizer=optimizer, criterion=criterion)
+        else:
+            loss_curve = self.full_gradient_descent(X, y, optimizer=optimizer, criterion=criterion)
+
+        training_time = time.time() - start_training_time
+        
+        if(self.display): 
+            print(f"Loss after gradient descent: {loss_curve[-1]:.6f}.")
+            print(f"Total Training time: {training_time}.")
+
+        self.loss_curve_ = loss_curve
+
+        return self
+    
+
+    def predict(self, X):
+        # convert X to tensor
+        X = self._to_tensor(X, dtype=torch.float32)
+
+        self.model_.eval()
+        if(self.display): print(f"Training Activated ? {self.model_.training}")
+    
+        with torch.no_grad():
+            output = self.model_(X)
+            predictions = output.argmax(dim=1)
+        
+        return predictions.numpy()
+    
+
+    def predict_proba(self, X):
+        # convert X to tensor
+        X = self._to_tensor(X, dtype=torch.float32)
+
+        self.model_.eval()
+        with torch.no_grad():
+            output = self.model_(X)
+        probs = torch.softmax(output, dim=1)
+
+        return probs.numpy()
