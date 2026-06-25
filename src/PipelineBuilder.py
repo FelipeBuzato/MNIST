@@ -17,7 +17,7 @@ class PipelineBuilder:
         if(model_name in ["KNN", "XGBoost", "My NN"]):
             preprocessor = self.get_preprocessor_simple()
         
-        elif(model_name in ["MLP", "NN"]):
+        elif(model_name in ["MLP", "NN", "CNN"]):
             preprocessor = self.get_preprocessor_NN()
 
         pipeline = Pipeline([

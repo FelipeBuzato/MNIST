@@ -10,9 +10,7 @@ DEFAULT_PARAMS = {
                 'subsample': 1.0, 'colsample_bytree': 1.0, 'reg_lambda': 1.0},
     "MLP": {'hidden_layer_sizes': (128,), 'activation': "relu", 'alpha': 1e-4, 'learning_rate_init': 1e-3, 
             'batch_size': 128, 'early_stopping': True, 'max_iter': 200, 'random_state': 42},
-    "My NN": {'activation': 'relu', 'learning_rate': 5e-2, 'hidden_layer_sizes': (128,), 'n_epochs': 100, 'batch_size': 258},
-    "NN": {'model_name': 'NN', 'hidden_layer_sizes': (128,), 'learning_rate': 1e-3, 'n_epochs': 50, 'batch_size': 256, 'sgd': True,
-                       'criterion': 'cross entropy', 'optimizer': 'adam'},    
+    "My NN": {'activation': 'relu', 'learning_rate': 5e-2, 'hidden_layer_sizes': (128,), 'n_epochs': 100, 'batch_size': 258},    
 }
 
 class ModelCollection:
@@ -41,6 +39,13 @@ class ModelCollection:
             return NNClassifierFromScratch(**params)
         
         elif(model_name == "NN"):
+            params = params.copy()
+            params['model_name'] = model_name
+            return TorchClassifier(**params)
+        
+        elif(model_name == "CNN"):
+            params = params.copy()
+            params['model_name'] = model_name
             return TorchClassifier(**params)
         
         raise ValueError(f"Unknown model: {model_name}")
